@@ -1,0 +1,106 @@
+<html>
+<head>
+    <title>Belly Button Bacteria</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+
+<select id="selDataset" onchange="optionChanged(this.value)"></select>
+
+<div class="container">
+    <div class="row">
+        <div class="col-*-*"></div>
+        <div class="col-*-*"></div>
+    </div>
+    <div class="row">
+        <div class="col-*-*"></div>
+        <div class="col-*-*"></div>
+        <div class="col-*-*"></div>
+    </div>
+    <div class="row">
+        ...
+    </div>
+</div>
+<div id="metatable" class="panel-body"></div>
+<div id="pie"></div>
+<div id="bubble"></div>
+</body>
+
+<script>
+    getNames();
+    // Get new data whenever the dropdown selection changes
+    function getNames() {
+        Plotly.d3.json(`/names`, function (error, data) {
+            console.log("data", data);
+            var i;
+            for (i = 0; i < data.length; i++) {
+                console.log("data", data[i]);
+                var option = document.createElement('option');
+                option.text = data[i];
+                option.value = data[i];
+                document.getElementById('selDataset').appendChild(option);
+            }
+        });
+    }
+    // OTU Descriptions
+    Plotly.d3.json("/otu", function (error, otu) {
+        if (error) return console.warn(error);
+        pie(otu);
+    })
+    var default_url = "/";
+    var metatable = document.getElementById("metatable");
+    function pie(otu) {
+        Plotly.d3.json("/samples/BB_940", function (error, response) {
+            if (error) return console.warn(error);
+            var otu_labels = [];
+            var i;
+            for (i in response.otu_ids.slice(0, 9)) {
+                otu_labels.push(otu[i]);
+            }
+            var data = [{
+                values: response.sample_values.slice(0,9),
+                labels: response.otu_ids.slice(0,9),
+                type: 'pie'
+            }];
+            var layout = {margin: {t: 30, b: 100}};
+            Plotly.plot("pie", data, layout);
+        })
+    }
+    function optionChanged(sample) {
+        console.log("sample", sample);
+        var sampURL = `/samples/${sample}`;
+        var metaURL = `/metadata/${sample}`;
+        Plotly.d3.json(sampURL, function (error, data) {
+            if (error) return console.warn(error);
+            Plotly.d3.json("/otu", function (error, otu) {
+                if (error) return console.warn(error);
+                updatePlotly(otu, data);
+            })
+        });
+        Plotly.d3.json(metaURL, function (error, response) {
+            if (error) return console.warn(error);
+            var table = [];
+            for (key in response) {
+                table += "<b>" + key + ": " + " </b>" + response[key] + "<br>";
+            }
+            metatable.innerHTML = table
+        });
+    }
+    function updatePlotly(otu, data) {
+        console.log("labels", data.otu_ids.slice(0, 10));
+        console.log("values", data.sample_values.slice(0, 10));
+        var new_otu = [];
+        var i;
+        for (i in data.otu_ids) {
+            new_otu.push(otu[i]);
+        }
+        console.log("text", new_otu.slice(0, 10));
+        var Pie = document.getElementById("pie");
+        Plotly.restyle(Pie, "labels", [data.otu_ids.slice(0, 10)]);
+        Plotly.restyle(Pie, "values", [data.sample_values.slice(0, 10)]);
+    }
+</script>
+</html>
